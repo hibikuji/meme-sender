@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ミーム登録送信アプリ</title>
+    <style>
+        :root {
+            --bg: #eef3f8;
+            --panel: #ffffff;
+            --text: #18212f;
+            --muted: #647084;
+            --line: #d9e0ea;
+            --primary: #1f7a6d;
+            --primary-dark: #15594f;
+            --danger: #c43c4e;
+            --warn: #8a5a12;
+            --shadow: 0 10px 28px rgba(24, 33, 47, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--text);
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--bg);
+        }
+
+        header {
+            padding: 28px 20px 18px;
+            border-bottom: 1px solid var(--line);
+            background: #fbfcfe;
+        }
+
+        .header-inner {
+            width: min(1120px, 100%);
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: 28px;
+            letter-spacing: 0;
+        }
+
+        .subtitle {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        main {
+            width: min(1120px, 100%);
+            margin: 0 auto;
+            padding: 24px 20px 42px;
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 20px;
+        }
+
+        section {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        .panel {
+            padding: 18px;
+        }
+
+        h2 {
+            margin: 0 0 16px;
+            font-size: 18px;
+        }
+
+        label {
+            display: block;
+            margin: 14px 0 6px;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 11px 12px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            color: var(--text);
+            font: inherit;
+            background: #fff;
+        }
+
+        textarea {
+            min-height: 72px;
+            resize: vertical;
+        }
+
+        button {
+            border: 0;
+            border-radius: 6px;
+            padding: 11px 14px;
+            color: #fff;
+            font: inherit;
+            font-weight: 700;
+            background: var(--primary);
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: var(--primary-dark);
+        }
+
+        button.secondary {
+            color: var(--text);
+            border: 1px solid var(--line);
+            background: #f7f9fc;
+        }
+
+        button.secondary:hover {
+            background: #edf2f7;
+        }
+
+        button.danger {
+            background: var(--danger);
+        }
+
+        button.warn {
+            background: var(--warn);
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .actions button {
+            flex: 1;
+        }
+
+        .search-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .status {
+            min-height: 20px;
+            margin: 12px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .tag-suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .tag-chip {
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 6px 9px;
+            color: var(--text);
+            font-size: 12px;
+            font-weight: 700;
+            background: #f7f9fc;
+        }
+
+        .tag-chip:hover {
+            background: #e8f2ef;
+        }
+
+        .results {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            max-height: calc(100vh - 190px);
+            overflow: auto;
+            padding-right: 4px;
+        }
+
+        .meme-card {
+            overflow: hidden;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #fff;
+            display: grid;
+            grid-template-columns: 132px 1fr;
+            min-height: 112px;
+        }
+
+        .meme-card img {
+            width: 100%;
+            height: 100%;
+            min-height: 112px;
+            object-fit: cover;
+            display: block;
+            background: #edf2f7;
+        }
+
+        .meme-body {
+            padding: 12px;
+        }
+
+        .meme-title {
+            margin: 0 0 6px;
+            font-size: 15px;
+            line-height: 1.3;
+        }
+
+        .meme-phrase {
+            margin: 0 0 8px;
+            color: var(--text);
+            font-size: 14px;
+            line-height: 1.45;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .meta {
+            color: var(--muted);
+            font-size: 12px;
+            overflow-wrap: anywhere;
+        }
+
+        .card-actions {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .card-actions button {
+            padding: 9px 8px;
+            font-size: 13px;
+        }
+
+        .empty {
+            padding: 28px;
+            color: var(--muted);
+            text-align: center;
+            border: 1px dashed var(--line);
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+
+        @media (max-width: 840px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+
+            .results {
+                max-height: none;
+                overflow: visible;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .meme-card {
+                grid-template-columns: 96px 1fr;
+            }
+
+            .meme-card img {
+                min-height: 104px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-inner">
+            <h1>ミーム登録送信アプリ</h1>
+            <p class="subtitle">画像・セリフ・タグをSQLiteに保存して、キーワードで近いミームを探します。</p>
+        </div>
+    </header>
+
+    <main>
+        <section class="panel">
+            <h2 id="formTitle">ミーム登録</h2>
+            <form id="createForm">
+                <input id="memeId" type="hidden">
+
+                <label for="title">タイトル</label>
+                <input id="title" name="title" required placeholder="例: 感想ですよね">
+
+                <label for="phrase">セリフ・本文</label>
+                <textarea id="phrase" name="phrase" required placeholder="例: それってあなたの感想ですよね"></textarea>
+
+                <label for="tags">タグ</label>
+                <input id="tags" name="tags" placeholder="例: 反論, 論破, 煽り">
+                <div id="tagSuggestions" class="tag-suggestions"></div>
+
+                <label for="note">メモ</label>
+                <textarea id="note" name="note" placeholder="使いどころや補足"></textarea>
+
+                <label for="source_url">元URL</label>
+                <input id="source_url" name="source_url" placeholder="画像を拾った場所など">
+
+                <label for="image">画像</label>
+                <input id="image" name="image" type="file" accept="image/*" required>
+
+                <div class="actions">
+                    <button id="submitButton" type="submit">登録</button>
+                    <button id="cancelEditButton" type="button" class="secondary">クリア</button>
+                </div>
+            </form>
+            <p id="createStatus" class="status"></p>
+        </section>
+
+        <section class="panel">
+            <h2>検索</h2>
+            <div class="search-row">
+                <input id="searchInput" placeholder="例: それじゃね？ / 論破 / 煽り">
+                <button id="searchButton">検索</button>
+            </div>
+            <div id="results" class="results"></div>
+        </section>
+    </main>
+
+    <script>
+        const createForm = document.getElementById("createForm");
+        const createStatus = document.getElementById("createStatus");
+        const formTitle = document.getElementById("formTitle");
+        const memeIdInput = document.getElementById("memeId");
+        const submitButton = document.getElementById("submitButton");
+        const cancelEditButton = document.getElementById("cancelEditButton");
+        const searchInput = document.getElementById("searchInput");
+        const searchButton = document.getElementById("searchButton");
+        const results = document.getElementById("results");
+        const tagInput = document.getElementById("tags");
+        const imageInput = document.getElementById("image");
+        const tagSuggestions = document.getElementById("tagSuggestions");
+        const commonTags = ["煽り", "論破", "反論", "驚き", "悲しい", "喜び", "困惑", "同意", "拒否", "汎用"];
+        let currentMemes = [];
+
+        const escapeHtml = (value) => {
+            return String(value || "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        };
+
+        const loadMemes = async () => {
+            const query = searchInput.value.trim();
+            const response = await fetch(`/api/memes?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            currentMemes = data.memes;
+            renderMemes(data.memes);
+        };
+
+        const renderTagSuggestions = () => {
+            tagSuggestions.innerHTML = commonTags.map((tag) => `
+                <button class="tag-chip" type="button" onclick="addTag('${tag}')">${tag}</button>
+            `).join("");
+        };
+
+        const resetFormMode = (clearStatus = true) => {
+            createForm.reset();
+            memeIdInput.value = "";
+            imageInput.required = true;
+            formTitle.textContent = "ミーム登録";
+            submitButton.textContent = "登録";
+            cancelEditButton.textContent = "クリア";
+            if (clearStatus) {
+                createStatus.textContent = "";
+            }
+        };
+
+        const renderMemes = (memes) => {
+            if (!memes.length) {
+                results.innerHTML = `<div class="empty">登録済みミームがありません。</div>`;
+                return;
+            }
+
+            results.innerHTML = memes.map((meme) => `
+                <article class="meme-card">
+                    <img src="${escapeHtml(meme.image_url)}" alt="${escapeHtml(meme.title)}">
+                    <div class="meme-body">
+                        <h3 class="meme-title">${escapeHtml(meme.title)}</h3>
+                        <p class="meme-phrase">${escapeHtml(meme.phrase)}</p>
+                        <div class="meta">タグ: ${escapeHtml(meme.tags || "なし")}</div>
+                        <div class="meta">ID: ${escapeHtml(meme.id)} / 近さ: ${Math.round(meme.score * 100)}%</div>
+                        <div class="card-actions">
+                            <button onclick="sendDiscord('${meme.id}')">Discord</button>
+                            <button class="warn" onclick="startEdit('${meme.id}')">編集</button>
+                            <button class="danger" onclick="deleteMeme('${meme.id}')">削除</button>
+                        </div>
+                    </div>
+                </article>
+            `).join("");
+        };
+
+        createForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const editingId = memeIdInput.value;
+            createStatus.textContent = editingId ? "更新中..." : "登録中...";
+
+            const formData = new FormData(createForm);
+            if (editingId && !imageInput.files.length) {
+                formData.delete("image");
+            }
+
+            const response = await fetch(editingId ? `/api/memes/${editingId}` : "/api/memes", {
+                method: editingId ? "PUT" : "POST",
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                createStatus.textContent = `エラー: ${error.detail || "登録できませんでした。"}`;
+                return;
+            }
+
+            const result = await response.json();
+            resetFormMode(false);
+            createStatus.textContent = editingId ? `更新しました。ID: ${result.meme_id}` : `登録しました。ID: ${result.meme_id}`;
+            await loadMemes();
+        });
+
+        cancelEditButton.addEventListener("click", resetFormMode);
+        searchButton.addEventListener("click", loadMemes);
+        searchInput.addEventListener("input", () => {
+            window.clearTimeout(searchInput.timer);
+            searchInput.timer = window.setTimeout(loadMemes, 250);
+        });
+
+        window.addTag = (tag) => {
+            const tags = tagInput.value
+                .split(",")
+                .map((value) => value.trim())
+                .filter(Boolean);
+
+            if (!tags.includes(tag)) {
+                tags.push(tag);
+            }
+
+            tagInput.value = tags.join(", ");
+        };
+
+        window.startEdit = (memeId) => {
+            const meme = currentMemes.find((item) => item.id === memeId);
+            if (!meme) return;
+
+            memeIdInput.value = meme.id;
+            document.getElementById("title").value = meme.title;
+            document.getElementById("phrase").value = meme.phrase;
+            document.getElementById("tags").value = meme.tags;
+            document.getElementById("note").value = meme.note;
+            document.getElementById("source_url").value = meme.source_url;
+            imageInput.required = false;
+            formTitle.textContent = "ミーム編集";
+            submitButton.textContent = "更新";
+            cancelEditButton.textContent = "編集をやめる";
+            createStatus.textContent = "画像を選ばなければ、今の画像をそのまま使います。";
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        };
+
+        window.sendDiscord = async (memeId) => {
+            const response = await fetch(`/api/memes/${memeId}/discord`, { method: "POST" });
+            if (!response.ok) {
+                const error = await response.json();
+                alert(error.detail || "Discordに送信できませんでした。");
+                return;
+            }
+            alert("Discordに送信しました。");
+        };
+
+        window.deleteMeme = async (memeId) => {
+            if (!confirm("このミームを削除しますか？")) return;
+            const response = await fetch(`/api/memes/${memeId}`, { method: "DELETE" });
+            if (!response.ok) {
+                const error = await response.json();
+                alert(error.detail || "削除できませんでした。");
+                return;
+            }
+            await loadMemes();
+        };
+
+        renderTagSuggestions();
+        loadMemes();
+    </script>
+</body>
+</html>
