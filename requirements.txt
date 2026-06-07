@@ -3,3 +3,4 @@ uvicorn
 python-multipart
 requests
 discord.py
+Pillow

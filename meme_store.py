@@ -1,15 +1,21 @@
 import os
 import sqlite3
 import uuid
+from io import BytesIO
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from pathlib import Path
+
+from PIL import Image, ImageOps
 
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "memes.db"
 IMAGES_DIR = BASE_DIR / "images"
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+COMPRESSED_IMAGE_EXTENSION = ".webp"
+MAX_IMAGE_WIDTH = 1000
+WEBP_QUALITY = 82
 
 
 def get_db():
@@ -36,18 +42,44 @@ def init_db():
         )
 
 
-def create_meme_from_bytes(title, phrase, tags, note, source_url, image_bytes, original_filename):
+def process_image_bytes(image_bytes, original_filename):
     extension = Path(original_filename or "").suffix.lower()
     if extension not in ALLOWED_EXTENSIONS:
         raise ValueError("対応している画像形式は png, jpg, gif, webp です。")
 
-    meme_id = uuid.uuid4().hex[:12]
+    if extension == ".gif":
+        return image_bytes, extension
+
+    try:
+        with Image.open(BytesIO(image_bytes)) as image:
+            image = ImageOps.exif_transpose(image)
+            if image.width > MAX_IMAGE_WIDTH:
+                ratio = MAX_IMAGE_WIDTH / image.width
+                new_size = (MAX_IMAGE_WIDTH, max(1, int(image.height * ratio)))
+                image = image.resize(new_size, Image.Resampling.LANCZOS)
+
+            if image.mode not in ("RGB", "RGBA"):
+                image = image.convert("RGBA")
+
+            output = BytesIO()
+            image.save(output, format="WEBP", quality=WEBP_QUALITY, method=6)
+            return output.getvalue(), COMPRESSED_IMAGE_EXTENSION
+    except Exception as error:
+        raise ValueError(f"画像を処理できませんでした: {error}") from error
+
+
+def save_image_bytes(meme_id, image_bytes, original_filename):
+    processed_bytes, extension = process_image_bytes(image_bytes, original_filename)
     image_filename = f"{meme_id}{extension}"
     image_disk_path = IMAGES_DIR / image_filename
-    image_disk_path.write_bytes(image_bytes)
+    image_disk_path.write_bytes(processed_bytes)
+    return str(Path("images") / image_filename)
 
+
+def create_meme_from_bytes(title, phrase, tags, note, source_url, image_bytes, original_filename):
+    meme_id = uuid.uuid4().hex[:12]
     created_at = datetime.now(timezone.utc).isoformat()
-    image_path = str(Path("images") / image_filename)
+    image_path = save_image_bytes(meme_id, image_bytes, original_filename)
 
     with get_db() as conn:
         conn.execute(

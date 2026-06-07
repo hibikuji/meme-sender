@@ -1,6 +1,4 @@
 import os
-import shutil
-from pathlib import Path
 
 import requests
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -8,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
-from meme_store import ALLOWED_EXTENSIONS, BASE_DIR, IMAGES_DIR, create_meme_from_bytes, get_db, init_db, search_memes
+from meme_store import BASE_DIR, IMAGES_DIR, create_meme_from_bytes, get_db, init_db, save_image_bytes, search_memes
 
 
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
@@ -85,20 +83,19 @@ async def update_meme(
 
         image_path = row["image_path"]
         if image and image.filename:
-            extension = Path(image.filename).suffix.lower()
-            if extension not in ALLOWED_EXTENSIONS:
-                raise HTTPException(status_code=400, detail="対応している画像形式は png, jpg, gif, webp です。")
-
-            image_filename = f"{meme_id}{extension}"
-            image_disk_path = IMAGES_DIR / image_filename
-            with image_disk_path.open("wb") as f:
-                shutil.copyfileobj(image.file, f)
+            try:
+                image_path = save_image_bytes(
+                    meme_id=meme_id,
+                    image_bytes=await image.read(),
+                    original_filename=image.filename,
+                )
+            except ValueError as error:
+                raise HTTPException(status_code=400, detail=str(error)) from error
 
             old_image_path = BASE_DIR / row["image_path"]
-            if old_image_path != image_disk_path and old_image_path.exists() and old_image_path.is_file():
+            new_image_path = BASE_DIR / image_path
+            if old_image_path != new_image_path and old_image_path.exists() and old_image_path.is_file():
                 old_image_path.unlink()
-
-            image_path = str(Path("images") / image_filename)
 
         conn.execute(
             """

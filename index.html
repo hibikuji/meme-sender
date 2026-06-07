@@ -54,7 +54,7 @@
         }
 
         main {
-            width: min(1120px, 100%);
+            width: min(1280px, 100%);
             margin: 0 auto;
             padding: 24px 20px 42px;
             display: grid;
@@ -183,8 +183,8 @@
 
         .results {
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 10px;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
             max-height: calc(100vh - 190px);
             overflow: auto;
             padding-right: 4px;
@@ -195,34 +195,40 @@
             border: 1px solid var(--line);
             border-radius: 8px;
             background: #fff;
-            display: grid;
-            grid-template-columns: 132px 1fr;
-            min-height: 112px;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
         }
 
         .meme-card img {
             width: 100%;
-            height: 100%;
-            min-height: 112px;
+            height: 118px;
             object-fit: cover;
             display: block;
             background: #edf2f7;
         }
 
         .meme-body {
-            padding: 12px;
+            padding: 10px;
+            display: flex;
+            flex: 1;
+            flex-direction: column;
         }
 
         .meme-title {
-            margin: 0 0 6px;
-            font-size: 15px;
+            margin: 0 0 5px;
+            font-size: 14px;
             line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
         .meme-phrase {
-            margin: 0 0 8px;
+            margin: 0 0 7px;
             color: var(--text);
-            font-size: 14px;
+            font-size: 13px;
             line-height: 1.45;
             display: -webkit-box;
             -webkit-line-clamp: 2;
@@ -232,20 +238,25 @@
 
         .meta {
             color: var(--muted);
-            font-size: 12px;
+            font-size: 11px;
             overflow-wrap: anywhere;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
         .card-actions {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-top: 12px;
+            gap: 6px;
+            margin-top: auto;
+            padding-top: 10px;
         }
 
         .card-actions button {
-            padding: 9px 8px;
-            font-size: 13px;
+            padding: 8px 6px;
+            font-size: 12px;
         }
 
         .empty {
@@ -263,18 +274,19 @@
             }
 
             .results {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
                 max-height: none;
                 overflow: visible;
             }
         }
 
         @media (max-width: 520px) {
-            .meme-card {
-                grid-template-columns: 96px 1fr;
+            .results {
+                grid-template-columns: 1fr;
             }
 
             .meme-card img {
-                min-height: 104px;
+                height: 170px;
             }
         }
     </style>
