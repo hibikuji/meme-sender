@@ -93,18 +93,76 @@ Migrate local SQLite records to Supabase:
 .\.venv\Scripts\python.exe scripts\migrate_sqlite_to_supabase.py
 ```
 
-## Cloud Deployment
+## Split Cloud Deployment
 
-The cloud entrypoint is:
+Recommended free-oriented deployment:
+
+- Render runs the FastAPI web app.
+- KEITO Cloud runs the Discord bot.
+- Supabase stores the database rows and images.
+
+### Render Web Service
+
+Render should run the web app only.
+
+Start command:
+
+```text
+python start_web_cloud.py
+```
+
+Required Render environment variables:
+
+```text
+MEME_ADMIN_PASSWORD
+MEME_ADMIN_TOKEN_DAYS=90
+MEME_STORE_BACKEND=supabase
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_BUCKET=memes
+LOG_LEVEL=info
+```
+
+The app exposes a health check endpoint:
+
+```text
+/health
+```
+
+### KEITO Cloud Bot
+
+KEITO Cloud should run the Discord bot only.
+
+Start file:
+
+```text
+bot.py
+```
+
+Required KEITO Cloud environment variables:
+
+```text
+DISCORD_BOT_TOKEN
+DISCORD_GUILD_ID
+MEME_ADMIN_DISCORD_USER_IDS
+MEME_STORE_BACKEND=supabase
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_BUCKET=memes
+```
+
+### Single-Service Cloud Entrypoint
+
+If a cloud provider can run the web app and bot in one always-on service, use:
 
 ```text
 python start_cloud.py
 ```
 
 `start_cloud.py` runs the FastAPI web app and the Discord bot in the same Python process.
-This is intended for a single free web service such as Koyeb.
+This was originally intended for a single free web service such as Koyeb.
 
-Required environment variables for cloud use:
+Required environment variables for single-service cloud use:
 
 ```text
 DISCORD_BOT_TOKEN
@@ -123,12 +181,6 @@ Optional environment variables:
 MEME_ADMIN_TOKEN_DAYS=90
 PORT=8000
 LOG_LEVEL=info
-```
-
-The app exposes a health check endpoint:
-
-```text
-/health
 ```
 
 ## Access From a Phone on the Same Wi-Fi

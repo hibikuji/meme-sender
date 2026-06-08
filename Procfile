@@ -1,1 +1,1 @@
-web: python start_cloud.py
+web: python start_web_cloud.py
