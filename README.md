@@ -16,7 +16,8 @@ Discord bot and local web app for registering, searching, and sending meme image
 
 - Python
 - FastAPI
-- SQLite
+- SQLite / Supabase PostgreSQL
+- Supabase Storage
 - discord.py
 - HTML / CSS / JavaScript
 
@@ -62,6 +63,72 @@ Start both in the background.
 
 ```powershell
 .\scripts\start_all.ps1
+```
+
+## Supabase Backend
+
+The app can use either local SQLite or Supabase.
+
+```powershell
+setx MEME_STORE_BACKEND "supabase"
+setx SUPABASE_URL "https://your-project.supabase.co"
+setx SUPABASE_SERVICE_ROLE_KEY "your_service_role_key"
+setx SUPABASE_BUCKET "memes"
+```
+
+Use `sqlite` to return to local storage.
+
+```powershell
+setx MEME_STORE_BACKEND "sqlite"
+```
+
+The Supabase project needs:
+
+- A public Storage bucket named `memes`
+- A `public.memes` PostgreSQL table
+
+Migrate local SQLite records to Supabase:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\migrate_sqlite_to_supabase.py
+```
+
+## Cloud Deployment
+
+The cloud entrypoint is:
+
+```text
+python start_cloud.py
+```
+
+`start_cloud.py` runs the FastAPI web app and the Discord bot in the same Python process.
+This is intended for a single free web service such as Koyeb.
+
+Required environment variables for cloud use:
+
+```text
+DISCORD_BOT_TOKEN
+DISCORD_GUILD_ID
+MEME_ADMIN_PASSWORD
+MEME_ADMIN_DISCORD_USER_IDS
+MEME_STORE_BACKEND=supabase
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_BUCKET=memes
+```
+
+Optional environment variables:
+
+```text
+MEME_ADMIN_TOKEN_DAYS=90
+PORT=8000
+LOG_LEVEL=info
+```
+
+The app exposes a health check endpoint:
+
+```text
+/health
 ```
 
 ## Access From a Phone on the Same Wi-Fi

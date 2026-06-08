@@ -3,38 +3,104 @@ import os
 import discord
 from discord import app_commands
 
-from meme_store import ALLOWED_EXTENSIONS, create_meme_from_bytes, get_meme, get_meme_image_path, init_db, search_memes
+from meme_store import (
+    ALLOWED_EXTENSIONS,
+    create_meme_from_bytes,
+    find_image_matches,
+    get_meme,
+    get_meme_image_path,
+    init_db,
+    search_memes,
+)
 
 
 DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "")
 DISCORD_GUILD_ID = os.getenv("DISCORD_GUILD_ID", "")
+MEME_ADMIN_DISCORD_USER_IDS = {
+    user_id.strip()
+    for user_id in os.getenv("MEME_ADMIN_DISCORD_USER_IDS", "").split(",")
+    if user_id.strip()
+}
 IMAGE_CONTENT_TYPES = {"image/png", "image/jpeg", "image/gif", "image/webp"}
 
 
 class MemeChoiceView(discord.ui.View):
     def __init__(self, memes):
         super().__init__(timeout=120)
-        for index, meme in enumerate(memes, start=1):
-            self.add_item(MemeSendButton(index, meme["id"], meme["title"]))
+        self.memes = memes
+        self.index = 0
+        self.add_item(MemeSelect(self))
+        self.refresh_buttons()
+
+    @property
+    def current_meme(self):
+        return self.memes[self.index]
+
+    def make_content(self):
+        return f"候補 {self.index + 1}/{len(self.memes)}。画像を確認して、使うなら投稿を押してください。"
+
+    def refresh_buttons(self):
+        self.previous_button.disabled = self.index == 0
+        self.next_button.disabled = self.index == len(self.memes) - 1
+
+    async def refresh_message(self, interaction):
+        self.refresh_buttons()
+        await interaction.response.edit_message(
+            content=self.make_content(),
+            embed=make_preview_embed(self.current_meme),
+            view=self,
+        )
+
+    @discord.ui.button(label="前へ", style=discord.ButtonStyle.secondary, row=1)
+    async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.index = max(0, self.index - 1)
+        await self.refresh_message(interaction)
+
+    @discord.ui.button(label="投稿", style=discord.ButtonStyle.primary, row=1)
+    async def send_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(ephemeral=True)
+        await publish_meme(interaction, self.current_meme["id"])
+        await delete_choice_message(interaction)
+
+    @discord.ui.button(label="次へ", style=discord.ButtonStyle.secondary, row=1)
+    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.index = min(len(self.memes) - 1, self.index + 1)
+        await self.refresh_message(interaction)
+
+    @discord.ui.button(label="閉じる", style=discord.ButtonStyle.danger, row=1)
+    async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(ephemeral=True)
+        await delete_choice_message(interaction)
 
 
-class MemeSendButton(discord.ui.Button):
-    def __init__(self, index, meme_id, title):
-        super().__init__(label=f"{index}. {title[:60]}", style=discord.ButtonStyle.primary)
-        self.meme_id = meme_id
+class MemeSelect(discord.ui.Select):
+    def __init__(self, browser_view):
+        self.browser_view = browser_view
+        options = []
+        for index, meme in enumerate(browser_view.memes):
+            score = round(meme["score"] * 100)
+            tags = meme["tags"] or "タグなし"
+            options.append(
+                discord.SelectOption(
+                    label=f"{index + 1}. {meme['title']}"[:100],
+                    description=f"{score}% / {tags}"[:100],
+                    value=str(index),
+                )
+            )
+        super().__init__(placeholder="候補を選択", min_values=1, max_values=1, options=options, row=0)
 
     async def callback(self, interaction: discord.Interaction):
-        meme = get_meme(self.meme_id)
-        image_path = get_meme_image_path(self.meme_id)
+        self.browser_view.index = int(self.values[0])
+        await self.browser_view.refresh_message(interaction)
 
-        if not meme or not image_path or not image_path.exists():
-            await interaction.response.send_message("ミーム画像が見つかりませんでした。", ephemeral=True)
-            return
 
-        await interaction.response.send_message(
-            content=meme["phrase"],
-            file=discord.File(image_path),
-        )
+class UserInstallTestView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=60)
+
+    @discord.ui.button(label="投稿テスト", style=discord.ButtonStyle.primary)
+    async def post_test(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("memer test: このチャンネルへ投稿できました。")
 
 
 class MemeRegisterModal(discord.ui.Modal, title="ミームとして登録"):
@@ -73,6 +139,7 @@ class MemeRegisterModal(discord.ui.Modal, title="ミームとして登録"):
 
         try:
             image_bytes = await self.attachment.read()
+            matches = find_image_matches(image_bytes, self.attachment.filename)
             meme_id = create_meme_from_bytes(
                 title=str(self.title_input.value),
                 phrase=str(self.phrase_input.value),
@@ -86,7 +153,18 @@ class MemeRegisterModal(discord.ui.Modal, title="ミームとして登録"):
             await interaction.followup.send(f"登録できませんでした: {error}", ephemeral=True)
             return
 
-        await interaction.followup.send(f"登録しました。ID: `{meme_id}`", ephemeral=True)
+        warnings = []
+        if matches["exact"]:
+            warnings.append("完全一致の画像が既に登録されています。")
+        if matches["similar"]:
+            titles = " / ".join(match["title"] for match in matches["similar"][:3])
+            warnings.append(f"似ている画像: {titles}")
+
+        message = f"登録しました。ID: `{meme_id}`"
+        if warnings:
+            message += "\n注意: " + " ".join(warnings)
+
+        await interaction.followup.send(message, ephemeral=True)
 
 
 class MemeBot(discord.Client):
@@ -100,8 +178,8 @@ class MemeBot(discord.Client):
             guild = discord.Object(id=int(DISCORD_GUILD_ID))
             self.tree.copy_global_to(guild=guild)
             await self.tree.sync(guild=guild)
-        else:
-            await self.tree.sync()
+
+        await self.tree.sync()
 
     async def on_ready(self):
         print(f"Logged in as {self.user} ({self.user.id})")
@@ -117,7 +195,69 @@ def is_supported_image_attachment(attachment):
     return extension.lower() in ALLOWED_EXTENSIONS
 
 
+def is_admin_discord_user(user):
+    if not MEME_ADMIN_DISCORD_USER_IDS:
+        return True
+    return str(user.id) in MEME_ADMIN_DISCORD_USER_IDS
+
+
+def make_preview_embed(meme):
+    embed = discord.Embed(
+        title=meme["title"],
+        description=meme["phrase"],
+        color=discord.Color.blurple(),
+    )
+    if meme.get("tags"):
+        embed.add_field(name="タグ", value=meme["tags"], inline=False)
+    if meme.get("image_url"):
+        embed.set_image(url=meme["image_url"])
+    return embed
+
+
+def make_image_embed(meme):
+    embed = discord.Embed(color=discord.Color.blurple())
+    if meme.get("image_url"):
+        embed.set_image(url=meme["image_url"])
+    return embed
+
+
+async def publish_meme(interaction, meme_id):
+    meme = get_meme(meme_id)
+    image_path = get_meme_image_path(meme_id)
+
+    if not meme:
+        await interaction.followup.send("ミームが見つかりませんでした。", ephemeral=True)
+        return
+
+    if image_path and image_path.exists():
+        await interaction.followup.send(
+            file=discord.File(image_path),
+        )
+        return
+
+    await interaction.followup.send(
+        embed=make_image_embed(meme),
+    )
+
+
+async def delete_choice_message(interaction):
+    try:
+        await interaction.delete_original_response()
+        return
+    except discord.NotFound:
+        return
+    except discord.HTTPException:
+        pass
+
+    try:
+        await interaction.message.delete()
+    except discord.HTTPException:
+        await interaction.followup.send("候補画面はDiscord側の閉じる操作で消せます。", ephemeral=True)
+
+
 @client.tree.command(name="meme", description="登録済みミームを検索して送信します。")
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 @app_commands.describe(query="探したいミームの言葉やタグ")
 async def meme(interaction: discord.Interaction, query: str):
     memes = search_memes(query, limit=5)
@@ -125,35 +265,54 @@ async def meme(interaction: discord.Interaction, query: str):
         await interaction.response.send_message("候補が見つかりませんでした。", ephemeral=True)
         return
 
-    lines = []
-    for index, item in enumerate(memes, start=1):
-        score = round(item["score"] * 100)
-        tags = f" / {item['tags']}" if item["tags"] else ""
-        lines.append(f"{index}. {item['title']} ({score}%){tags}")
+    view = MemeChoiceView(memes)
 
     await interaction.response.send_message(
-        "候補を選んでください。\n" + "\n".join(lines),
-        view=MemeChoiceView(memes),
+        view.make_content(),
+        embed=make_preview_embed(view.current_meme),
+        view=view,
         ephemeral=True,
     )
 
 
 @client.tree.command(name="meme_random", description="登録済みミームから候補を表示します。")
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def meme_random(interaction: discord.Interaction):
     memes = search_memes("", limit=5)
     if not memes:
         await interaction.response.send_message("登録済みミームがありません。", ephemeral=True)
         return
 
+    view = MemeChoiceView(memes)
+
     await interaction.response.send_message(
-        "最近のミーム候補です。",
-        view=MemeChoiceView(memes),
+        view.make_content(),
+        embed=make_preview_embed(view.current_meme),
+        view=view,
+        ephemeral=True,
+    )
+
+
+@client.tree.command(name="memer_test", description="User Install Appの動作を確認します。")
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+async def memer_test(interaction: discord.Interaction):
+    await interaction.response.send_message(
+        "User Install Appのテストです。このメッセージが見えているのはあなただけです。",
+        view=UserInstallTestView(),
         ephemeral=True,
     )
 
 
 @client.tree.context_menu(name="ミームとして登録")
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def register_meme_from_message(interaction: discord.Interaction, message: discord.Message):
+    if not is_admin_discord_user(interaction.user):
+        await interaction.response.send_message("この操作は管理者だけが使えます。", ephemeral=True)
+        return
+
     image_attachment = None
     for attachment in message.attachments:
         if is_supported_image_attachment(attachment):

@@ -39,6 +39,40 @@
         .header-inner {
             width: min(1120px, 100%);
             margin: 0 auto;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 14px;
+            align-items: start;
+        }
+
+        .drawer-toggle {
+            width: 42px;
+            height: 42px;
+            padding: 0;
+            display: inline-grid;
+            place-items: center;
+            border: 1px solid var(--line);
+            color: var(--text);
+            font-size: 22px;
+            line-height: 1;
+            background: #ffffff;
+        }
+
+        .drawer-toggle:hover {
+            background: #edf2f7;
+        }
+
+        .drawer-toggle span {
+            display: block;
+            transition: transform 0.2s ease;
+        }
+
+        body.form-collapsed .drawer-toggle span {
+            transform: rotate(180deg);
+        }
+
+        .title-block {
+            min-width: 0;
         }
 
         h1 {
@@ -53,13 +87,35 @@
             font-size: 14px;
         }
 
+        .admin-button {
+            align-self: start;
+            white-space: nowrap;
+        }
+
         main {
             width: min(1280px, 100%);
             margin: 0 auto;
-            padding: 24px 20px 42px;
+            min-height: calc(100vh - 137px);
+            padding: 18px 20px 20px;
             display: grid;
             grid-template-columns: 360px 1fr;
             gap: 20px;
+            transition: grid-template-columns 0.22s ease;
+        }
+
+        body.form-collapsed main {
+            grid-template-columns: 0 1fr;
+            gap: 0;
+        }
+
+        body.admin-locked main {
+            grid-template-columns: 1fr;
+        }
+
+        body.admin-locked .form-panel,
+        body.admin-locked .drawer-toggle,
+        body.admin-locked .admin-only {
+            display: none;
         }
 
         section {
@@ -71,6 +127,30 @@
 
         .panel {
             padding: 18px;
+        }
+
+        .form-panel {
+            overflow: hidden;
+            min-width: 0;
+            opacity: 1;
+            transform: translateX(0);
+            transition: opacity 0.18s ease, transform 0.22s ease, padding 0.22s ease, border-width 0.22s ease;
+        }
+
+        body.form-collapsed .form-panel {
+            padding-right: 0;
+            padding-left: 0;
+            border-width: 0;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(-18px);
+        }
+
+        .search-panel {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
         }
 
         h2 {
@@ -184,8 +264,10 @@
         .results {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
+            align-content: start;
             gap: 12px;
-            max-height: calc(100vh - 190px);
+            flex: 1;
+            min-height: 0;
             overflow: auto;
             padding-right: 4px;
         }
@@ -268,9 +350,105 @@
             background: #f8fafc;
         }
 
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            display: none;
+            place-items: center;
+            padding: 20px;
+            background: rgba(24, 33, 47, 0.48);
+        }
+
+        .modal-backdrop.is-open {
+            display: grid;
+        }
+
+        .modal {
+            width: min(520px, 100%);
+            max-height: min(720px, calc(100vh - 40px));
+            overflow: auto;
+            padding: 18px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 18px 44px rgba(24, 33, 47, 0.24);
+        }
+
+        .modal h2 {
+            margin-bottom: 8px;
+        }
+
+        .modal-text {
+            margin: 0 0 14px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.55;
+        }
+
+        .duplicate-list {
+            display: grid;
+            gap: 8px;
+            margin: 12px 0 16px;
+        }
+
+        .duplicate-item {
+            display: grid;
+            grid-template-columns: 64px 1fr;
+            gap: 10px;
+            padding: 8px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+
+        .duplicate-item img {
+            width: 64px;
+            height: 54px;
+            object-fit: cover;
+            border-radius: 6px;
+            background: #edf2f7;
+        }
+
+        .duplicate-title {
+            margin: 0 0 3px;
+            font-size: 14px;
+            line-height: 1.35;
+        }
+
+        .duplicate-meta {
+            margin: 0;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
         @media (max-width: 840px) {
+            .header-inner {
+                width: 100%;
+                grid-template-columns: auto 1fr;
+            }
+
+            .admin-button {
+                grid-column: 1 / -1;
+            }
+
             main {
                 grid-template-columns: 1fr;
+            }
+
+            body.form-collapsed main {
+                grid-template-columns: 1fr;
+            }
+
+            body.form-collapsed .form-panel {
+                display: none;
             }
 
             .results {
@@ -291,16 +469,22 @@
         }
     </style>
 </head>
-<body>
+<body class="admin-locked">
     <header>
         <div class="header-inner">
-            <h1>ミーム登録送信アプリ</h1>
-            <p class="subtitle">画像・セリフ・タグをSQLiteに保存して、キーワードで近いミームを探します。</p>
+            <button id="drawerToggle" class="drawer-toggle" type="button" aria-label="登録パネルを閉じる" aria-expanded="true">
+                <span>‹</span>
+            </button>
+            <div class="title-block">
+                <h1>ミーム登録送信アプリ</h1>
+                <p class="subtitle">画像・セリフ・タグをSQLiteに保存して、キーワードで近いミームを探します。</p>
+            </div>
+            <button id="adminButton" class="admin-button secondary" type="button">管理ログイン</button>
         </div>
     </header>
 
     <main>
-        <section class="panel">
+        <section class="panel form-panel" id="formPanel">
             <h2 id="formTitle">ミーム登録</h2>
             <form id="createForm">
                 <input id="memeId" type="hidden">
@@ -332,7 +516,7 @@
             <p id="createStatus" class="status"></p>
         </section>
 
-        <section class="panel">
+        <section class="panel search-panel">
             <h2>検索</h2>
             <div class="search-row">
                 <input id="searchInput" placeholder="例: それじゃね？ / 論破 / 煽り">
@@ -342,9 +526,23 @@
         </section>
     </main>
 
+    <div id="duplicateModal" class="modal-backdrop" aria-hidden="true">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="duplicateModalTitle">
+            <h2 id="duplicateModalTitle">似ている画像があります</h2>
+            <p class="modal-text">既に登録済みの画像に近いものが見つかりました。コラ画像や派生画像なら、そのまま登録できます。</p>
+            <div id="duplicateList" class="duplicate-list"></div>
+            <div class="modal-actions">
+                <button id="duplicateCancelButton" type="button" class="secondary">登録をやめる</button>
+                <button id="duplicateConfirmButton" type="button">それでも登録</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const createForm = document.getElementById("createForm");
         const createStatus = document.getElementById("createStatus");
+        const drawerToggle = document.getElementById("drawerToggle");
+        const adminButton = document.getElementById("adminButton");
         const formTitle = document.getElementById("formTitle");
         const memeIdInput = document.getElementById("memeId");
         const submitButton = document.getElementById("submitButton");
@@ -355,8 +553,87 @@
         const tagInput = document.getElementById("tags");
         const imageInput = document.getElementById("image");
         const tagSuggestions = document.getElementById("tagSuggestions");
+        const duplicateModal = document.getElementById("duplicateModal");
+        const duplicateList = document.getElementById("duplicateList");
+        const duplicateCancelButton = document.getElementById("duplicateCancelButton");
+        const duplicateConfirmButton = document.getElementById("duplicateConfirmButton");
         const commonTags = ["煽り", "論破", "反論", "驚き", "悲しい", "喜び", "困惑", "同意", "拒否", "汎用"];
         let currentMemes = [];
+        let adminToken = localStorage.getItem("memeAdminToken") || "";
+        localStorage.removeItem("memeAdminPassword");
+
+        const authHeaders = () => {
+            return adminToken ? { "X-Meme-Admin-Token": adminToken } : {};
+        };
+
+        const updateAdminState = (isAdmin) => {
+            document.body.classList.toggle("admin-locked", !isAdmin);
+            document.body.classList.toggle("admin-unlocked", isAdmin);
+            adminButton.textContent = isAdmin ? "管理ログアウト" : "管理ログイン";
+        };
+
+        const verifyAdminToken = async (token) => {
+            const response = await fetch("/api/auth/check", {
+                method: "POST",
+                headers: { "X-Meme-Admin-Token": token },
+            });
+            return response.ok;
+        };
+
+        const ensureAdmin = async () => {
+            if (adminToken && await verifyAdminToken(adminToken)) {
+                updateAdminState(true);
+                return true;
+            }
+
+            const password = prompt("管理パスワードを入力してください。");
+            if (!password) {
+                updateAdminState(false);
+                return false;
+            }
+
+            const response = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: { "X-Meme-Admin-Password": password },
+            });
+
+            if (!response.ok) {
+                localStorage.removeItem("memeAdminToken");
+                adminToken = "";
+                updateAdminState(false);
+                alert("管理パスワードが違います。");
+                return false;
+            }
+
+            const result = await response.json();
+            adminToken = result.token;
+            localStorage.setItem("memeAdminToken", adminToken);
+            updateAdminState(true);
+            return true;
+        };
+
+        const initializeAdminState = async () => {
+            if (!adminToken) {
+                updateAdminState(false);
+                return;
+            }
+
+            if (await verifyAdminToken(adminToken)) {
+                updateAdminState(true);
+                return;
+            }
+
+            localStorage.removeItem("memeAdminToken");
+            adminToken = "";
+            updateAdminState(false);
+        };
+
+        const setFormCollapsed = (collapsed) => {
+            document.body.classList.toggle("form-collapsed", collapsed);
+            drawerToggle.setAttribute("aria-expanded", String(!collapsed));
+            drawerToggle.setAttribute("aria-label", collapsed ? "登録パネルを開く" : "登録パネルを閉じる");
+            localStorage.setItem("memeFormCollapsed", collapsed ? "1" : "0");
+        };
 
         const escapeHtml = (value) => {
             return String(value || "")
@@ -407,7 +684,7 @@
                         <p class="meme-phrase">${escapeHtml(meme.phrase)}</p>
                         <div class="meta">タグ: ${escapeHtml(meme.tags || "なし")}</div>
                         <div class="meta">ID: ${escapeHtml(meme.id)} / 近さ: ${Math.round(meme.score * 100)}%</div>
-                        <div class="card-actions">
+                        <div class="card-actions admin-only">
                             <button onclick="sendDiscord('${meme.id}')">Discord</button>
                             <button class="warn" onclick="startEdit('${meme.id}')">編集</button>
                             <button class="danger" onclick="deleteMeme('${meme.id}')">削除</button>
@@ -417,20 +694,88 @@
             `).join("");
         };
 
-        createForm.addEventListener("submit", async (event) => {
-            event.preventDefault();
+        const duplicateMatchLabel = (match) => {
+            if (match.match_type === "exact") {
+                return "完全一致";
+            }
+            return `類似 / 距離 ${match.distance}`;
+        };
+
+        const showDuplicateModal = (matches) => {
+            const items = [...matches.exact, ...matches.similar].slice(0, 8);
+            duplicateList.innerHTML = items.map((match) => `
+                <article class="duplicate-item">
+                    <img src="${escapeHtml(match.image_url)}" alt="${escapeHtml(match.title)}">
+                    <div>
+                        <h3 class="duplicate-title">${escapeHtml(match.title)}</h3>
+                        <p class="duplicate-meta">${escapeHtml(duplicateMatchLabel(match))}</p>
+                        <p class="duplicate-meta">${escapeHtml(match.phrase || "")}</p>
+                    </div>
+                </article>
+            `).join("");
+
+            duplicateModal.classList.add("is-open");
+            duplicateModal.setAttribute("aria-hidden", "false");
+            duplicateConfirmButton.focus();
+
+            return new Promise((resolve) => {
+                const cleanup = (result) => {
+                    duplicateModal.classList.remove("is-open");
+                    duplicateModal.setAttribute("aria-hidden", "true");
+                    duplicateConfirmButton.removeEventListener("click", onConfirm);
+                    duplicateCancelButton.removeEventListener("click", onCancel);
+                    duplicateModal.removeEventListener("click", onBackdrop);
+                    document.removeEventListener("keydown", onKeydown);
+                    resolve(result);
+                };
+
+                const onConfirm = () => cleanup(true);
+                const onCancel = () => cleanup(false);
+                const onBackdrop = (event) => {
+                    if (event.target === duplicateModal) {
+                        cleanup(false);
+                    }
+                };
+                const onKeydown = (event) => {
+                    if (event.key === "Escape") {
+                        cleanup(false);
+                    }
+                };
+
+                duplicateConfirmButton.addEventListener("click", onConfirm);
+                duplicateCancelButton.addEventListener("click", onCancel);
+                duplicateModal.addEventListener("click", onBackdrop);
+                document.addEventListener("keydown", onKeydown);
+            });
+        };
+
+        const submitMemeForm = async (forceDuplicate = false) => {
+            if (!await ensureAdmin()) return;
+
             const editingId = memeIdInput.value;
             createStatus.textContent = editingId ? "更新中..." : "登録中...";
 
             const formData = new FormData(createForm);
+            formData.append("force_duplicate", forceDuplicate ? "true" : "false");
             if (editingId && !imageInput.files.length) {
                 formData.delete("image");
             }
 
             const response = await fetch(editingId ? `/api/memes/${editingId}` : "/api/memes", {
                 method: editingId ? "PUT" : "POST",
+                headers: authHeaders(),
                 body: formData,
             });
+
+            if (response.status === 409) {
+                const warning = await response.json();
+                const matches = warning.detail.matches;
+                if (await showDuplicateModal(matches)) {
+                    return submitMemeForm(true);
+                }
+                createStatus.textContent = "登録をキャンセルしました。";
+                return;
+            }
 
             if (!response.ok) {
                 const error = await response.json();
@@ -442,9 +787,29 @@
             resetFormMode(false);
             createStatus.textContent = editingId ? `更新しました。ID: ${result.meme_id}` : `登録しました。ID: ${result.meme_id}`;
             await loadMemes();
+        };
+
+        createForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            await submitMemeForm(false);
+        });
+
+        adminButton.addEventListener("click", async () => {
+            if (adminToken) {
+                localStorage.removeItem("memeAdminToken");
+                adminToken = "";
+                resetFormMode();
+                updateAdminState(false);
+                return;
+            }
+
+            await ensureAdmin();
         });
 
         cancelEditButton.addEventListener("click", resetFormMode);
+        drawerToggle.addEventListener("click", () => {
+            setFormCollapsed(!document.body.classList.contains("form-collapsed"));
+        });
         searchButton.addEventListener("click", loadMemes);
         searchInput.addEventListener("input", () => {
             window.clearTimeout(searchInput.timer);
@@ -465,6 +830,7 @@
         };
 
         window.startEdit = (memeId) => {
+            if (!adminToken) return;
             const meme = currentMemes.find((item) => item.id === memeId);
             if (!meme) return;
 
@@ -479,11 +845,16 @@
             submitButton.textContent = "更新";
             cancelEditButton.textContent = "編集をやめる";
             createStatus.textContent = "画像を選ばなければ、今の画像をそのまま使います。";
+            setFormCollapsed(false);
             window.scrollTo({ top: 0, behavior: "smooth" });
         };
 
         window.sendDiscord = async (memeId) => {
-            const response = await fetch(`/api/memes/${memeId}/discord`, { method: "POST" });
+            if (!await ensureAdmin()) return;
+            const response = await fetch(`/api/memes/${memeId}/discord`, {
+                method: "POST",
+                headers: authHeaders(),
+            });
             if (!response.ok) {
                 const error = await response.json();
                 alert(error.detail || "Discordに送信できませんでした。");
@@ -493,8 +864,12 @@
         };
 
         window.deleteMeme = async (memeId) => {
+            if (!await ensureAdmin()) return;
             if (!confirm("このミームを削除しますか？")) return;
-            const response = await fetch(`/api/memes/${memeId}`, { method: "DELETE" });
+            const response = await fetch(`/api/memes/${memeId}`, {
+                method: "DELETE",
+                headers: authHeaders(),
+            });
             if (!response.ok) {
                 const error = await response.json();
                 alert(error.detail || "削除できませんでした。");
@@ -504,6 +879,8 @@
         };
 
         renderTagSuggestions();
+        initializeAdminState();
+        setFormCollapsed(localStorage.getItem("memeFormCollapsed") === "1");
         loadMemes();
     </script>
 </body>
